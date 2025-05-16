@@ -31,6 +31,7 @@ import argparse
 import getpass
 from pyproj import Transformer
 import datetime
+import os
 
 def lv03_to_wgs84(easting, northing, transformer):
     """
@@ -76,6 +77,31 @@ def write_gpx(track_name, points, via_points, output_file, transformer):
         f.write('  </trkseg></trk>\n')
         f.write('</gpx>\n')
 
+def load_credentials_from_file(filepath):
+    """
+    Load credentials from a file.
+    The file should contain two lines:
+    username=your_username
+    password=your_password
+    Returns a dict with 'username' and 'password', or None if missing or malformed.
+    """
+    creds = {}
+    if not os.path.isfile(filepath):
+        return None
+    with open(filepath, "r", encoding="utf-8") as f:
+        for line in f:
+            if "=" in line:
+                key, value = line.strip().split("=", 1)
+                creds[key.strip()] = value.strip()
+    # Check for missing or empty values
+    if (
+        "username" in creds and creds["username"]
+        and "password" in creds and creds["password"]
+    ):
+        return creds
+    print(f"Credentials file '{filepath}' is missing required fields or is malformed.")
+    return None
+
 def main():
     """
     Main entry point for the script.
@@ -85,11 +111,37 @@ def main():
     parser.add_argument("--username", "-u", help="Your schweizmobil.ch username")
     parser.add_argument("--password", "-p", help="Your schweizmobil.ch password")
     parser.add_argument("--track", "-t", help="Name of the track to export (case-sensitive)")
+    parser.add_argument("--credentials-file", "-c", help="Path to a file containing username and password")
     args = parser.parse_args()
 
-    # Interactive prompts if not provided
-    username = args.username or input("Schweizmobil.ch username: ")
-    password = args.password or getpass.getpass("Schweizmobil.ch password: ")
+    creds = {}
+    # 1. Try credentials file from argument
+    if args.credentials_file:
+        creds = load_credentials_from_file(args.credentials_file) or {}
+    # 2. Try default credentials.txt if not already loaded
+    if not creds:
+        default_file = "credentials.txt"
+        if os.path.isfile(default_file):
+            creds = load_credentials_from_file(default_file) or {}
+    # 3. Use command line arguments if provided
+    if args.username:
+        creds["username"] = args.username
+    if args.password:
+        creds["password"] = args.password
+
+    # 4. Prompt interactively if still missing or empty
+    if "username" not in creds or not creds["username"]:
+        creds["username"] = input("Schweizmobil.ch username: ")
+    if "password" not in creds or not creds["password"]:
+        creds["password"] = getpass.getpass("Schweizmobil.ch password: ")
+
+    # Final check
+    if not creds.get("username") or not creds.get("password"):
+        print("Username or password missing. Exiting.")
+        exit(1)
+
+    username = creds["username"]
+    password = creds["password"]
     track_name = args.track or input("Track name (case-sensitive): ")
 
     pre = 'https://map.schweizmobil.ch'
