@@ -81,8 +81,9 @@ def load_credentials_from_file(filepath):
     """
     Load credentials from a file.
     The file should contain two lines:
-    username=your_username
-    password=your_password
+        username=your_username
+        password=your_password
+
     Returns a dict with 'username' and 'password', or None if missing or malformed.
     """
     creds = {}
@@ -93,13 +94,18 @@ def load_credentials_from_file(filepath):
             if "=" in line:
                 key, value = line.strip().split("=", 1)
                 creds[key.strip()] = value.strip()
-    # Check for missing or empty values
+    # Check for missing or empty values and extra keys
     if (
         "username" in creds and creds["username"]
         and "password" in creds and creds["password"]
+        and len(creds) == 2
     ):
         return creds
-    print(f"Credentials file '{filepath}' is missing required fields or is malformed.")
+    print(
+        f"Credentials file '{filepath}' is missing required fields or is malformed.\n"
+        "It should contain exactly two lines:\n"
+        "username=your_username\npassword=your_password"
+    )
     return None
 
 def main():
@@ -107,11 +113,22 @@ def main():
     Main entry point for the script.
     Handles argument parsing, authentication, track selection, and GPX export.
     """
-    parser = argparse.ArgumentParser(description="Download a track from schweizmobil.ch and export as GPX.")
-    parser.add_argument("--username", "-u", help="Your schweizmobil.ch username")
-    parser.add_argument("--password", "-p", help="Your schweizmobil.ch password")
-    parser.add_argument("--track", "-t", help="Name of the track to export (case-sensitive)")
-    parser.add_argument("--credentials-file", "-c", help="Path to a file containing username and password")
+    parser = argparse.ArgumentParser(
+        description="Download a track from schweizmobil.ch and export as GPX."
+    )
+    parser.add_argument(
+        "--username", "-u", help="Your schweizmobil.ch username"
+    )
+    parser.add_argument(
+        "--password", "-p", help="Your schweizmobil.ch password"
+    )
+    parser.add_argument(
+        "--track", "-t", help="Name of the track to export (case-sensitive)"
+    )
+    parser.add_argument(
+        "--credentials-file", "-c",
+        help="Path to a file containing username and password (format: username=... and password=...)"
+    )
     args = parser.parse_args()
 
     creds = {}
@@ -172,7 +189,7 @@ def main():
     matching_tracks = [t for t in tracks if t["name"] == track_name]
 
     if not matching_tracks:
-        print(f"Track '{track_name}' not found in your schweizmobil.ch account.")
+        print(f"\nTrack '{track_name}' not found in your schweizmobil.ch account.")
         print("Available tracks:")
         for t in tracks:
             print(f"- {t['name']} (ID: {t['id']})")
@@ -180,7 +197,7 @@ def main():
 
     # If multiple tracks with the same name, ask the user to choose
     if len(matching_tracks) > 1:
-        print(f"Multiple tracks found with the name '{track_name}':")
+        print(f"\nMultiple tracks found with the name '{track_name}':")
         # Fetch details for each matching track to show more info
         detailed_tracks = []
         for idx, t in enumerate(matching_tracks):
@@ -238,7 +255,7 @@ def main():
     via_points = json.loads(props["via_points"])
     output_file = f"{track_name}.gpx"
     write_gpx(track_name, points, via_points, output_file, transformer)
-    print(f"GPX written: {output_file}")
+    print(f"\nGPX written: {output_file}")
 
     print("Done.")
 
